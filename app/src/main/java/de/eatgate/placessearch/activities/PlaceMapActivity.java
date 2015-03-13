@@ -28,6 +28,7 @@ import de.eatgate.placessearch.R;
 import de.eatgate.placessearch.entities.GPS;
 import de.eatgate.placessearch.entities.Place;
 import de.eatgate.placessearch.entities.PlaceDetails;
+import de.eatgate.placessearch.global.AppGob;
 import de.eatgate.placessearch.services.PlaceDetailsService;
 import de.eatgate.placessearch.services.PlacesService;
 
@@ -41,7 +42,7 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
     // Liste der gefundenen Orte, wird vom Asyn PlacesService mit Daten befuellt
     private ArrayList<Place> g_places = new ArrayList<Place>();
     // Details eines Ortes, wird vom Asyn PlaceDetailsService mit Daten befuellt
-    private PlaceDetails g_placeDetails;
+    // private PlaceDetails g_placeDetails;
     // Map speichert die Relation markerId, place_id;
     private HashMap<String,String> g_marker_id_place_id_map = new HashMap<String,String>();
     //  private String str_place_id = null;
@@ -166,10 +167,9 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
                         return null;
                     }    // Exception einbauen fuer Keynotfound
                     String cur_place_id = g_marker_id_place_id_map.get(marker.getId());
+                    // Aufruf der privaten Klasse  GetPlacesDetails, die den Service PlaceDetailsService aufruft
                     new GetPlacesDetails(PlaceMapActivity.this, cur_place_id).execute();
-                    // new Thread.sleep(2000);
                     return null;
-
                 }
 
                 @Override
@@ -193,51 +193,57 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
                     view.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT));
 
                     Log.e("GetPlaces_onPostExecute", "g_marker_Titel: " + g_marker.getTitle());
-                    int zaehler = 0;
-                    while(g_placeDetails == null && zaehler <= 100) {
+                    int counter = 0;
+                    AppGob app = (AppGob) getApplication();
+                    if (app == null) return null;
+                    // Infofenster wird erst angezeigt, wenn der Webservice - Call geantwortet
+                    // hat, nach 10*20 Millisekunden wird abgebrochen
+                    while(app.g_placeDetails == null && counter<= 100) {
                         try {
                             Thread.sleep(20);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                        zaehler++;
+                        counter++;
                     }
-                    if (g_placeDetails == null) {
+                    if (app.g_placeDetails == null) {
                          return null;
                     }
                     else
                     {
                         TextView textView_infoName = (TextView) view.findViewById(R.id.info_name);
                         TextView textView_infoAdresse = (TextView)view.findViewById(R.id.info_adresse);
-                        textView_infoName.setText(g_placeDetails.getName());
-                        textView_infoAdresse.setText(g_placeDetails.getVicinity());
+                        textView_infoName.setText(app.g_placeDetails.getName());
+                        textView_infoAdresse.setText(app.g_placeDetails.getVicinity());
                         RatingBar ratingBar = (RatingBar) view.findViewById(R.id.ratingBar1);
 
                        // Log.e("Rating: ",""+g_placeDetails.getRating());
-                        if(g_placeDetails.getArrRev()!=null) {
+                        if(app.g_placeDetails.getArrRev()!=null) {
 
                             double ratitng_sum = 0;
                             int anzahl = 0;
-                            for(int i = 0; i < g_placeDetails.getArrRev().size(); i++)
+                            for(int i = 0; i < app.g_placeDetails.getArrRev().size(); i++)
                             {
-                                if(g_placeDetails.getArrRev().get(i).getRating() > 0)
+                                if(app.g_placeDetails.getArrRev().get(i).getRating() > 0)
                                 {
-                                    ratitng_sum = ratitng_sum + g_placeDetails.getArrRev().get(i).getRating();
+                                    ratitng_sum = ratitng_sum + app.g_placeDetails.getArrRev().get(i).getRating();
                                     anzahl++;
                                 }
                             }
+                            // Setze Rating in g_placeDetails auf Durchschnittswertung
                             if (anzahl != 0)
                             {
                                 ratingBar.setRating((float) ratitng_sum/anzahl);
+                                app.g_placeDetails.setRating(ratitng_sum/anzahl);
                             }
                             else
                             {
                                 ratingBar.setRating(0);
+                                app.g_placeDetails.setRating(0);
                             }
                         }
                     }
                     return view;
-
                 }
             });
         }
@@ -261,7 +267,8 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            g_placeDetails = null;
+            AppGob app = (AppGob) getApplication();
+            app.g_placeDetails = null;
             g_marker = null;
         }
 
@@ -271,10 +278,9 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         protected String doInBackground(Void... arg0) {
             // creating Places class object
             placeDetailsService = new PlaceDetailsService(API_KEY,places_id);
-
-            g_placeDetails = placeDetailsService.findPlaceDetails(); // 77.218276
-            Log.e("GetPlacesDetails", " PlaceDetails: " + g_placeDetails.getName());
-
+            AppGob app = (AppGob) getApplication();
+            app.g_placeDetails = placeDetailsService.findPlaceDetails(); // 77.218276
+            Log.e("GetPlacesDetails", " PlaceDetails: " + app.g_placeDetails.getName());
             return "";
         }
 
@@ -285,40 +291,30 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
          * thread, otherwise you will get error
          * **/
         protected void onPostExecute(String file_url) {
-
             g_meinGoogleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
                 @Override
                 public void onInfoWindowClick(Marker marker) {
-
                     if (marker == null) {
                         Log.e("MapActivity: ", "Marker ist null");
                     } else {
                         Log.e("MapActivity: ", "Marker ist nicht null");
                         //str_place_id = marker.getTitle();
                     }
-
-                    if (!g_marker.getTitle().equals(Str_aktuellePosition) && g_placeDetails != null)
+                    AppGob app = (AppGob) getApplication();
+                    if (app != null && !g_marker.getTitle().equals(Str_aktuellePosition) && app.g_placeDetails != null)
                     {
                         // Starten einer neuen Activity, welches dies PlaceDetails anzeigt
                         Intent intent = new Intent(PlaceMapActivity.this, SinglePlacesActivity.class);
-                        Bundle b = new Bundle();
-                        // Exception einbauen fuer Keynotfound
-                        String cur_place_id = g_marker_id_place_id_map.get(marker.getId());
-                        b.putString("name", g_placeDetails.getName());
-                        b.putString("adresse", g_placeDetails.getVicinity());
-                        if(g_placeDetails.getWeekdays() != null)
-                        {
-                            b.putStringArrayList("openhours", g_placeDetails.getWeekdays());
-                        }
-                        b.putDouble("rating", g_placeDetails.getRating());
-                        intent.putExtras(b);
                         startActivity(intent);
                         finish();
                     }
                 }
             });
-            g_marker.setTitle(g_placeDetails.getName());
+            AppGob app = (AppGob) getApplication();
+            if(app != null && app.g_placeDetails != null) {
+                g_marker.setTitle(app.g_placeDetails.getName());
+            }
         }
     }
 

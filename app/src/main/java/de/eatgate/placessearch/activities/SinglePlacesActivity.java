@@ -14,6 +14,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import de.eatgate.placessearch.R;
 import de.eatgate.placessearch.activities.PlaceMapActivity;
+import de.eatgate.placessearch.entities.Review;
+import de.eatgate.placessearch.global.AppGob;
 
 /**
  * Created by ProMarkt on 19.01.2015.
@@ -27,28 +29,37 @@ public class SinglePlacesActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.single_place);
-
-        Bundle b = getIntent().getExtras();
-        if(b!=null)
-        {
-            String str_name = b.getString("name");
+        AppGob app = (AppGob) getApplication();
+        if(app != null) {
+            String str_name = app.g_placeDetails.getName();
             TextView tv_name = (TextView) findViewById(R.id.name);
             tv_name.setText(str_name);
 
-            String str_adresse = b.getString("adresse");
+            String str_adresse = app.g_placeDetails.getVicinity();
             TextView tv_adress = (TextView) findViewById(R.id.adresse);
             tv_adress.setText(str_adresse);
 
-            ArrayList<String> arrList = b.getStringArrayList("openhours");
-           // String tag = null;
+            String str_rating = "" + app.g_placeDetails.getRating();
+            TextView tv_rating = (TextView) findViewById(R.id.rating);
+            tv_rating.setText(str_rating);
+
+            ArrayList<String> arrList =  app.g_placeDetails.getWeekdays();
+
             if(arrList != null)
             {
-                Log.e("singlePlace", "arraylist: " + arrList.size());
+                Log.i("singlePlace", "arraylist: " + arrList.size());
                 TextView tv_OpenHours = (TextView) findViewById(R.id.str_oppenHours);
                 tv_OpenHours.setVisibility(View.VISIBLE);
                 listView_we_day = (ListView)findViewById(R.id.weekday_list);
                 listAdapter = new ArrayAdapter<String>(this,R.layout.simplerow,arrList);
                 listView_we_day.setAdapter(listAdapter);
+            }
+
+            ArrayList<Review> reviews = app.g_placeDetails.getArrRev();
+
+            if(reviews != null)
+            {
+                Log.i("reviews", "Reviews: " + reviews.get(0).getText());
             }
         }
     }
