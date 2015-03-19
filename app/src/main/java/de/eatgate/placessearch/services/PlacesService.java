@@ -119,7 +119,7 @@ public class PlacesService {
 			}
 			bufferedReader.close();
 		} catch (Exception e) {
-            Log.e("Catch me, ", "if you can!");
+            Log.e("PlacesService, ", "Can't get Url Content!!!");
 			e.printStackTrace();
 		}
 		return content.toString();

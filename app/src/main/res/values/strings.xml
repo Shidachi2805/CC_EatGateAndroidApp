@@ -14,5 +14,22 @@
     <string name="vorname">Vorname</string>
     <string name="nachname">Nachname</string>
     <string name="register">Register</string>
+    <string name="title_activity_make_review">Bewertung schreiben</string>
+    <string name="Send">Senden</string>
+    <string name="title_activity_upload_loc_photo">UploadLocPhotoActivity</string>
+    <string name="oeffnungsZeit">Öffnungszeit</string>
+    <string name="addresse">Adresse</string>
+    <string name="restaurantName">Name</string>
+    <string name="action_close">Beenden</string>
+    <string name="writeRv">Review schreiben</string>
+    <string name="upload">Hochladen</string>
+    <string name="title_activity_activity_test">ActivityTestActivity</string>
+    <string name="title_activity_my_camera">MyCameraActivity</string>
+    <string name="title_activity_image_pick">ImagePickActivity</string>
+    <string name="button_camera">Take</string>
+    <string name="image_view_camera">Shows the taken pic</string>
+    <string name="get_photo">Take</string>
+    <string name="title_activity_place_list">PlaceListActivity</string>
+    <string name="to_upload">Zum Upload</string>
 
 </resources>

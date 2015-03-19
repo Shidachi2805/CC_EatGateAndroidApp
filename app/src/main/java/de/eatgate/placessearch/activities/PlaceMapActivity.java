@@ -61,7 +61,6 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.map_places);
-
         gps = new GPS(this);
         // check if GPS location can get
         if (gps.canGetLocation()) {
@@ -129,14 +128,15 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
             super.onPreExecute();
             // Liste der gefundenen Orte wird neu mit leerer Liste initialisiert
             g_places = new ArrayList<Place>();
+            // creating PlacesService class object
+            placesService = new PlacesService(API_KEY,radius,types);
+
         }
 
         /**
          * getting Places JSON
          * */
         protected String doInBackground(Void... arg0) {
-            // creating PlacesService class object
-            placesService = new PlacesService(API_KEY,radius,types);
 
             g_places = placesService.findPlaces(gps.getLatitude(), // 28.632808
                     gps.getLongitude()); // 77.218276
@@ -152,6 +152,7 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
          * thread, otherwise you will get error
          * **/
         protected void onPostExecute(String file_url) {
+            Log.e("!!!!!","!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
              // wenn Call zum Finden der Orte zurueck ist dann wird die GoogleMap geladen
             MapFragment mapFragment = (MapFragment) getFragmentManager()
                     .findFragmentById(R.id.map);

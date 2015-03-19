@@ -7,4 +7,5 @@ import de.eatgate.placessearch.entities.PlaceDetails;
  */
 public class AppGob extends Application {
     public  static PlaceDetails g_placeDetails;
+    public  static String mCurrentPhotoPath;
 }

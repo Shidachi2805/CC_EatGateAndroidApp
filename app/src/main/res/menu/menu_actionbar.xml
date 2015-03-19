@@ -5,4 +5,9 @@
           android:icon="@drawable/abc_ic_ab_back_mtrl_am_alpha"
           android:title="@string/action_back"
           android:showAsAction="ifRoom" />
+
+    <item android:id="@+id/action_close"
+        android:icon="@drawable/abc_ic_ab_back_mtrl_am_alpha"
+        android:title="@string/action_close"
+        android:showAsAction="ifRoom" />
 </menu>

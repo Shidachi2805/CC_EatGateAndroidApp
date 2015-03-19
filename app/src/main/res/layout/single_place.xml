@@ -3,14 +3,31 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/placeImage" />
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:layout_height="wrap_content"
+            android:text="@string/writeRv"
+            android:id="@+id/btnOpenRev"
+            android:layout_width="wrap_content"
+            android:clickable="true"
+            android:onClick="onClickWriteRev" />
+
+        <Button
+            android:layout_height="wrap_content"
+            android:text="@string/upload"
+            android:id="@+id/btnOpenUpload"
+            android:layout_width="wrap_content"
+            android:clickable="true"
+            android:onClick="OnClickUploadFile" />
+    </LinearLayout>
+
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/str_rest_name" />
+        android:text="@string/restaurantName" />
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -18,7 +35,7 @@
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/str_adress"/>
+        android:text="@string/addresse"/>
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -40,7 +57,7 @@
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/str_offnungsZeit"
+        android:text="@string/oeffnungsZeit"
         android:id="@+id/str_oppenHours"
         android:visibility="invisible"/>
 
@@ -48,5 +65,10 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:id="@+id/weekday_list"/>
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/placeImage" />
 
 </LinearLayout>

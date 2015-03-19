@@ -4,5 +4,20 @@
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
         <!-- Customize your theme here. -->
     </style>
-
+    <style name="MainStyle">
+        <item name="android:background">#ff575757</item>
+        <item name="android:textColor">#ff232323</item>
+    </style>
+    <style name="TextStyle">
+        <item name="android:background">#ffcecece</item>
+        <item name="android:textColor">#FF232323</item>
+    </style>
+    <style name="ButtonStyle">
+        <item name="android:background">#ff232323</item>
+        <item name="android:textColor">#fffa7e1b</item>
+    </style>
+    <style name="RatingBarStyle">
+        <item name="android:background">#ff575757</item>
+        <item name="android:textColor">#fffa7e1b</item>
+    </style>
 </resources>
