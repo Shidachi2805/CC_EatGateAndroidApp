@@ -38,7 +38,7 @@ public class ListViewAdapter extends ArrayAdapter<Place> {
         //TextView age = (TextView) row.findViewById(R.id.age_value);
         // TextView separator = (TextView) row.findViewById(R.id.seperator);
 
-        name.setText(places.get(position).getName());
+        name.setText(places.get(position).getPlace_id());
 
         return row;
     }

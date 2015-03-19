@@ -1,18 +1,15 @@
 package de.eatgate.placessearch.services;
 
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.util.Log;
 
 import de.eatgate.placessearch.entities.Place;
 
@@ -37,11 +34,10 @@ public class PlacesService {
 		this.API_KEY = apikey;
 	}
 
-	public ArrayList<Place> findPlaces(double latitude, double longitude) {
+    public ArrayList<Place> findPlaces(double latitude, double longitude) throws Exception {
 
-		String urlString = makeUrl(latitude, longitude);
+        String urlString = makeUrl(latitude, longitude);
 
-		try {
 			String json = getJSON(urlString);
 
 			System.out.println(json);
@@ -50,29 +46,23 @@ public class PlacesService {
 
 			ArrayList<Place> arrayList = new ArrayList<Place>();
 			for (int i = 0; i < array.length(); i++) {
-				try {
-					Place place = Place
+
+                Place place = Place
 							.jsonToPlace((JSONObject) array.get(i));
-					Log.v("Places Services ", "Place_id: " + place.getPlace_id());
-					arrayList.add(place);
-				} catch (Exception e) {
-                    Log.e("Catch me, ", "if you can");
-				}
-			}
+                Log.i("Places Services ", "Place_id: " + place.getPlace_id());
+                arrayList.add(place);
+
+            }
 			return arrayList;
-		} catch (JSONException ex) {
-		        Logger.getLogger(PlacesService.class.getName()).log(Level.SEVERE,
-					null, ex);
-		}
-		return null;
 	}
 
 	// https://maps.googleapis.com/maps/api/place/search/json?location=28.632808,77.218276&radius=500&types=atm&sensor=false&key=apikey
 	private String makeUrl(double latitude, double longitude) {
 		StringBuilder urlString = new StringBuilder(
 				"https://maps.googleapis.com/maps/api/place/radarsearch/json?");
-
-		if (types.equals("")) {
+        //latitude = 50.55162;
+        //longitude = 9.67518;
+        if (types.equals("")) {
 			urlString.append("&location=");
 			urlString.append(Double.toString(latitude));
 			urlString.append(",");
@@ -81,9 +71,11 @@ public class PlacesService {
 			//urlString.append("&types="+ types);
 			urlString.append("&sensor=true&key=" + API_KEY);
 		} else {
-            // zum Test bestimmter Koord
-            //latitude = 50.54335;
-            //longitude = 9.675329;
+            // zum Test bestimmter Koord im Emulator
+            // telnet localhost 5554
+            // geo fix long lat
+            //  latitude = 50.55162;
+            //  longitude = 9.67518;
             urlString.append("location=");
             urlString.append(Double.toString(latitude));
             urlString.append(",");
@@ -101,14 +93,13 @@ public class PlacesService {
 		return urlString.toString();
 	}
 
-	protected String getJSON(String url) {
-		return getUrlContents(url);
+    protected String getJSON(String url) throws Exception {
+        return getUrlContents(url);
 	}
 
-	private String getUrlContents(String theUrl) {
-		StringBuilder content = new StringBuilder();
+    private String getUrlContents(String theUrl) throws Exception {
+        StringBuilder content = new StringBuilder();
 
-		try {
 			URL url = new URL(theUrl);
 			URLConnection urlConnection = url.openConnection();
 			BufferedReader bufferedReader = new BufferedReader(
@@ -118,10 +109,7 @@ public class PlacesService {
 				content.append(line + "\n");
 			}
 			bufferedReader.close();
-		} catch (Exception e) {
-            Log.e("Catch me, ", "if you can!");
-			e.printStackTrace();
-		}
-		return content.toString();
-	}
+
+        return content.toString();
+    }
 }
