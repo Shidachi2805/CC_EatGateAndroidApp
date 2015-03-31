@@ -37,7 +37,6 @@
                 style="@style/TextStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="left"
                 android:layout_margin="0dp"
                 android:layout_marginBottom="30dp"
                 android:layout_marginLeft="0dp"
@@ -45,6 +44,22 @@
                 android:layout_marginTop="10dp"
                 android:padding="10dp"
                 android:text="@string/your_position" />
+
+            <EditText
+                style="@style/TextInputStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:editable="true"
+                android:enabled="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:maxLines="1"
+                android:padding="10dp"
+                android:singleLine="true"
+                android:text=""
+                android:layout_marginBottom="5dp"
+                android:id="@+id/search_word" />
 
             <Button
                 android:id="@+id/btnToMap"

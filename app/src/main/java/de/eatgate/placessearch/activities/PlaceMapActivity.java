@@ -66,6 +66,7 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
     private ProgressDialog statusProgress = null;
     private AlertDialog.Builder builder = null;
     private AlertDialog dialog = null;
+    private String search_word = "";
 
     private void buildInfoDialog() {
         builder = new AlertDialog.Builder(this);
@@ -92,10 +93,14 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.map_places);
+        Bundle b = getIntent().getExtras();
+        if(b!=null) {
+            search_word = "" + (String) b.get("search_word");
+            Toast.makeText(this, search_word, Toast.LENGTH_LONG).show();
+        }
         buildInfoDialog();
         if (!InternetManager.isOnline(this)) {
             Toast.makeText(this, "Keine Internet-Verbindung", Toast.LENGTH_LONG).show();
-
         } else {
             gps = new GPS(this);
             try {
@@ -116,7 +121,7 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
             }
             statusProgress = ProgressDialog.show(this, "Bitte warten ...", "Google Maps wird geladen ...", true, false);
             // Call fuer Finden der Orte - radius, types
-            new GetPlaces(PlaceMapActivity.this, radius, types).execute();
+            new GetPlaces(PlaceMapActivity.this, radius, types, search_word).execute();
         }
     }
 
@@ -230,11 +235,13 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         private String types;
         private Context context;
         private String radius;
+        private String searchWord;
 
-        public GetPlaces(Context context, String radius, String types) {
+        public GetPlaces(Context context, String radius, String types, String searchWord) {
             this.context = context;
             this.types = types;
             this.radius = radius;
+            this.searchWord = searchWord;
         }
 
         /**
@@ -246,7 +253,7 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
             // Liste der gefundenen Orte wird neu mit leerer Liste initialisiert
             g_places = new ArrayList<Place>();
             // creating PlacesService class object
-            placesService = new PlacesService(API_KEY, radius, types);
+            placesService = new PlacesService(API_KEY, radius, types, searchWord);
         }
 
         /**
@@ -254,10 +261,12 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
          */
         protected String doInBackground(Void... arg0) {
             try {
-                g_places = placesService.findPlaces(gps.getLatitude(), // 28.632808
-                        gps.getLongitude()); // 77.218276
+                g_places = placesService.findPlaces(gps.getLatitude(),
+                        gps.getLongitude());
             } catch (Exception e) {
-                Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Probleme mit der Internetverbindung oder Ortsbestimmung!", Toast.LENGTH_LONG).show();
+                Toast.makeText(PlaceMapActivity.this,
+                   "Fehler! Wahrscheinlich Probleme mit der Internetverbindung oder Ortsbestimmung!",
+                    Toast.LENGTH_LONG).show();
                 Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);

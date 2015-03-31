@@ -26,11 +26,32 @@ public class PlacesService {
 	private String API_KEY;
     private String radius;
     private String types;
+    private String searchWord;
 
-	public PlacesService(String apikey, String radius, String types) {
+	public PlacesService(String apikey, String radius, String types, String searchWord) {
+        // Standard Suchparameter
         this.API_KEY = apikey;
         this.radius = radius;
         this.types = types;
+        this.searchWord = "";
+        // Debug Parameter
+        if(!searchWord.isEmpty()) {
+            try {
+               radius = "" + Double.parseDouble(searchWord);
+               this.radius = radius;
+               this.searchWord = "";
+            } catch (NumberFormatException e)  {
+                searchWord = searchWord.trim();
+                if(searchWord.startsWith("#")) {
+                    this.types=searchWord.substring(1);
+                    this.searchWord = "";
+                } else {
+                    this.searchWord = searchWord;
+                }
+            }
+        } else {
+            this.searchWord = "";
+        }
 	}
 
 	public void setApiKey(String apikey) {
@@ -56,7 +77,7 @@ public class PlacesService {
 					Log.v("Places Services ", "Place_id: " + place.getPlace_id());
 					arrayList.add(place);
 				} catch (Exception e) {
-                    Log.e("Catch me, ", "if you can");
+
 				}
 			}
 			return arrayList;
@@ -78,7 +99,9 @@ public class PlacesService {
 			urlString.append(",");
 			urlString.append(Double.toString(longitude));
 			urlString.append("&radius=" + radius);
-			//urlString.append("&types="+ types);
+            if(!searchWord.isEmpty()) {
+                urlString.append("&name=" + searchWord);
+            }
 			urlString.append("&sensor=true&key=" + API_KEY);
 		} else {
             // zum Test bestimmter Koord
@@ -93,9 +116,10 @@ public class PlacesService {
             //urlString.append("&rankby=distance");
             urlString.append("&pagetoken");
             urlString.append("&radius=" + radius);
-           // urlString.append("&country=Fulda");
-
-           // urlString.append("&name=sushi");
+            // urlString.append("&country=Fulda");
+            if(!searchWord.isEmpty()) {
+                urlString.append("&name=" + searchWord);
+            }
 			urlString.append("&sensor=true&key=" + API_KEY);
 		}
 		return urlString.toString();

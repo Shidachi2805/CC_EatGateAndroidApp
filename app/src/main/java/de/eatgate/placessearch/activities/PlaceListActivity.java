@@ -88,8 +88,7 @@ public class PlaceListActivity extends Activity {
             // Liste der gefundenen Orte wird neu mit leerer Liste initialisiert
             g_places = new ArrayList<Place>();
             // creating PlacesService class object
-            placesService = new PlacesService(API_KEY, radius, types);
-
+            placesService = new PlacesService(API_KEY, radius, types,"");
         }
 
         /**

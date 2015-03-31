@@ -51,10 +51,10 @@ public class MakeReviewActivity extends Activity {
      * da static ausserhalb der inneren Klasse
      *
      * @param url
-     * @param personJSON
+     * @param revJSON
      * @return
      */
-    private static int postReview(String url, JSONObject personJSON, Activity ac) {
+    private static int postReview(String url, JSONObject revJSON, Activity ac) {
         InputStream inputStream = null;
         String result = "";
         int responseCode = 0;
@@ -68,7 +68,7 @@ public class MakeReviewActivity extends Activity {
 
             String json = "";
             // 4. convert JSONObject to JSON to String
-            json = personJSON.toString();
+            json = revJSON.toString();
 
             // ** Alternative way to convert Person object to JSON string usin Jackson Lib
             // ObjectMapper mapper = new ObjectMapper();
@@ -278,13 +278,14 @@ public class MakeReviewActivity extends Activity {
             // erzeuge JSON zum senden
             JSONObject reviewJSON = new JSONObject();
             try {
-                reviewJSON.put("Service", "SaveBewertung");
+                reviewJSON.put("Service", "AddBewertung");
                 reviewJSON.put("Ueberschrift", headlineView.getText());
                 reviewJSON.put("Inhalt", contentView.getText());
-                reviewJSON.put("Erstelltungdatum", new Date().toString());
+                reviewJSON.put("Erstelltlungdatum", new Date().toString());
                 reviewJSON.put("Voting", "" + valueRatingBar);
-                reviewJSON.put("idBenutzer", app.mUserId); // toDo dynamischer Benutzer
+                reviewJSON.put("idBenutzer", "" + app.mUserId); // toDo dynamischer Benutzer
                 reviewJSON.put("Place_id", app.g_placeDetails.getPlace_id());
+                Log.e("reviewJSON check", reviewJSON.toString());
             } catch (Exception ex) {
                 // toDo
                 Log.e("JSON Exception", "doInBackground Fehler");
@@ -304,7 +305,7 @@ public class MakeReviewActivity extends Activity {
          */
         @Override
         protected void onPostExecute(Integer code) {
-            Log.i("JSON Log", "onPostExecut " + code);
+            Log.i("JSON Log", "onPostExecute " + code);
             if (code == 201) {
                 Toast.makeText(MakeReviewActivity.this, "Succcess: " + code + "!", Toast.LENGTH_LONG).show();
                 Intent intent = new Intent(MakeReviewActivity.this, PlaceMapActivity.class);

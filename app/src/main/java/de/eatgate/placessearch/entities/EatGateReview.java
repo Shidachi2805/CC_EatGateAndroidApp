@@ -22,6 +22,11 @@ public class EatGateReview {
 
     }
 
+    /**
+     *
+     * @param jsonObject
+     * @return
+     */
     public static EatGateReview jsonToEatGateReview(JSONObject jsonObject) {
         try {
             EatGateReview result = new EatGateReview();

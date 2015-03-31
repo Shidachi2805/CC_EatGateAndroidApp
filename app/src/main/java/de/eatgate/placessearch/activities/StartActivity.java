@@ -69,7 +69,7 @@ public class StartActivity extends Activity {
         AppGob app = (AppGob) getApplication();
         app.mUserId = 1;
 
-        textViewGPS = (TextView) findViewById(R.id.textViewGPS);
+        textViewGPS = (TextView)findViewById(R.id.textViewGPS);
         gpsManager = new GPSManager(this, textViewGPS);
         gpsManager.checkCpsConNw(); // prueft ob Position des Devices bestimmt werden kann
         // und setzt das Textfeld in der View mit dem Ort
@@ -80,9 +80,12 @@ public class StartActivity extends Activity {
                 boolean bInternet = InternetManager.isOnline(StartActivity.this);
                 boolean bGPS = gpsManager.isGPS();
                 if (bInternet) {
+                    TextView tv = (TextView) (StartActivity.this).findViewById(R.id.search_word);
+                    String search_word = tv.getText().toString();
                     // nur wenn Internetverbindung vorhanden, kann die Map gestartet werden
                     Intent intent = new Intent(StartActivity.this, PlaceMapActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra("search_word", search_word);
                     startActivity(intent);
                     finish();
                 } else {
