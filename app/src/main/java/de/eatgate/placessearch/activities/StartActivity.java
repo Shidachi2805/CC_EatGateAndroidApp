@@ -64,7 +64,7 @@ public class StartActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
         buildInfoDialog();
-
+Hel
         // toDo User Login : fuer ersten Release ist der User immer als User mit Id 1 eingeloggt
         AppGob app = (AppGob) getApplication();
         app.mUserId = 1;
