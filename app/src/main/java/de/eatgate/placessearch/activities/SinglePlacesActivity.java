@@ -34,6 +34,9 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.BasicHttpParams;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.HttpParams;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -60,10 +63,13 @@ import de.eatgate.placessearch.helpers.ListViewAdapterRev;
  * Created by Khanh on 19.01.2015.
  */
 public class SinglePlacesActivity extends Activity {
+    private final static int TIMEOUT_CON = 600;
+    private final static int TIMEOUT_SOC = 1000;
     private static ArrayList<EatGateReview> eatGateReviewList = null;
     private static ArrayList<EatGatePhotoUrl> eatGatePhotoList = null;
     private final String server = "http://192.168.70.22/EatGate/api/WWWBewertungPortal";
     private final String serverDownload = "http://192.168.70.22/";
+    private final String TAG = "LOG_SINGLEPLACESACTIVITY";
     private ArrayAdapter<String> listAdapter;
     private ListViewAdapterRev adapter;
     private AlertDialog.Builder builder = null;
@@ -92,9 +98,14 @@ public class SinglePlacesActivity extends Activity {
         String result = "";
         int responseCode = 0;
         try {
+            HttpParams httpParameters = new BasicHttpParams();
+            int timeoutConnection = TIMEOUT_CON;
+            HttpConnectionParams.setConnectionTimeout(httpParameters, timeoutConnection);
+            int timeoutSocket = TIMEOUT_SOC;
+            HttpConnectionParams.setSoTimeout(httpParameters, timeoutSocket);
 
             // 1. create HttpClient
-            HttpClient httpclient = new DefaultHttpClient();
+            HttpClient httpclient = new DefaultHttpClient(httpParameters);
 
             // 2. make POST request to the given URL
             HttpPost httpPost = new HttpPost(url);
@@ -189,6 +200,39 @@ public class SinglePlacesActivity extends Activity {
              result += line;
          inputStream.close();
          return result;
+    }
+
+    private static void addReviewItems(String inhalt, String voting, Activity ac) {
+        LinearLayout linearLayout = (LinearLayout) ac.findViewById(R.id.linearLayoutFromImage);
+        TextView view1 = new TextView(ac);
+        view1.setPadding(5, 5, 5, 5);
+        if (inhalt.isEmpty()) inhalt = inhalt + "---";
+        view1.setText(inhalt);
+        view1.setTextColor(Color.LTGRAY);
+        linearLayout.addView(view1);
+        TextView view2 = new TextView(ac);
+        view2.setPadding(5, 5, 5, 55);
+        // params.setMargins(10,10,10,20);
+        // view2.setLayoutParams(params);
+        if (voting.equals("0.0")) voting = "---";
+        view2.setText("Rating: " + voting);
+        view2.setTextColor(Color.LTGRAY);
+        linearLayout.addView(view2);
+        TextView view3 = new TextView(ac);
+        view3.setPadding(5, 5, 5, 5);
+        view3.setText("------------------------------------------");
+        view3.setTextColor(Color.DKGRAY);
+        linearLayout.addView(view3);
+    }
+
+    private static boolean addGooglePlaceReviews(Activity ac, ArrayList<Review> reviews) {
+        if (reviews != null) {
+            Log.i("reviews", "Reviews: " + reviews.get(0).getText());
+            for (Review rv : reviews) {
+                addReviewItems(rv.getText(), "" + rv.getRating(), ac);
+            }
+        }
+        return true;
     }
 
     private void buildInfoDialog() {
@@ -295,42 +339,10 @@ public class SinglePlacesActivity extends Activity {
                         index++;
                     }
                 }
-                new CheckEatGatePlace(this,app.g_placeDetails.getPlace_id()).execute(server);
+                new CheckEatGatePlace(this, app.g_placeDetails.getPlace_id()).execute(server);
+                // addGooglePlaceReviews(this,app.g_placeDetails.getArrRev()) ;
             }
         }
-    }
-
-    private static void addReviewItems(String inhalt, String voting, Activity ac) {
-        LinearLayout linearLayout = (LinearLayout)ac.findViewById(R.id.linearLayoutFromImage);
-        TextView view1 = new TextView(ac);
-        view1.setPadding(5, 5, 5, 5);
-        if (inhalt.isEmpty()) inhalt = inhalt + "---";
-        view1.setText(inhalt);
-        view1.setTextColor(Color.LTGRAY);
-        linearLayout.addView(view1);
-        TextView view2 = new TextView(ac);
-        view2.setPadding(5, 5, 5, 55);
-        // params.setMargins(10,10,10,20);
-        // view2.setLayoutParams(params);
-        if (voting.equals("0.0")) voting = "---";
-        view2.setText("Rating: " + voting);
-        view2.setTextColor(Color.LTGRAY);
-        linearLayout.addView(view2);
-        TextView view3 = new TextView(ac);
-        view3.setPadding(5, 5, 5, 5);
-        view3.setText("------------------------------------------");
-        view3.setTextColor(Color.DKGRAY);
-        linearLayout.addView(view3);
-    }
-
-    private static boolean addGooglePlaceReviews(Activity ac, ArrayList<Review> reviews) {
-        if (reviews != null) {
-            Log.i("reviews", "Reviews: " + reviews.get(0).getText());
-            for (Review rv : reviews) {
-                addReviewItems(rv.getText(), "" + rv.getRating(),ac);
-            }
-        }
-        return true;
     }
 
     @Override
@@ -372,9 +384,11 @@ public class SinglePlacesActivity extends Activity {
         if (id == R.id.action_menu) {
             onClickMainMenu(menuItemView);
         } else if (id == R.id.action_back) {
-            Intent intent = new Intent(this, PlaceMapActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(intent);
+            // Intent intent = new Intent(this, PlaceMapActivity.class);
+            // app.g_placeDetails = null;
+            //intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            //intent.putExtra("search_word", "");
+            //startActivity(intent);
             finish();
         }
         return super.onOptionsItemSelected(item);
@@ -747,9 +761,18 @@ public class SinglePlacesActivity extends Activity {
          */
         @Override
         protected void onPostExecute(Integer code) {
-            Log.i("JSON Log", "onPostExecut " + code);
+            Log.i(TAG, "onPostExecute " + code);
             // Call fuer Lesen EatGate
-          new GetEatGateReviews(SinglePlacesActivity.this).execute(server);
+            if (code == 201) {
+
+                new GetEatGateReviews(SinglePlacesActivity.this).execute(server);
+
+            } else {
+                Toast.makeText(SinglePlacesActivity.this,
+                        "EatGate Service down - skip ...", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Probleme mit Verbindung zum EatGate Server - skip EatGate Service");
+                addGooglePlaceReviews(SinglePlacesActivity.this, app.g_placeDetails.getArrRev());
+            }
         }
     }
 

@@ -64,12 +64,12 @@ public class StartActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
         buildInfoDialog();
-Hel
+
         // toDo User Login : fuer ersten Release ist der User immer als User mit Id 1 eingeloggt
         AppGob app = (AppGob) getApplication();
         app.mUserId = 1;
 
-        textViewGPS = (TextView)findViewById(R.id.textViewGPS);
+        textViewGPS = (TextView) findViewById(R.id.textViewGPS);
         gpsManager = new GPSManager(this, textViewGPS);
         gpsManager.checkCpsConNw(); // prueft ob Position des Devices bestimmt werden kann
         // und setzt das Textfeld in der View mit dem Ort

@@ -8,6 +8,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -28,9 +30,10 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 import de.eatgate.placessearch.R;
 import de.eatgate.placessearch.global.AppGob;
@@ -44,6 +47,8 @@ public class UploadPhotoActivity extends Activity implements OnClickListener {
     private AlertDialog.Builder builder = null;
     private AlertDialog dialog = null;
     private String server = "http://192.168.70.22/EatGate/home/photoupload";
+    private AppGob app = null;
+
     private void buildInfoDialog() {
         builder = new AlertDialog.Builder(this);
         builder.setTitle("About");
@@ -68,6 +73,7 @@ public class UploadPhotoActivity extends Activity implements OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_upload_photo);
+        app = (AppGob) getApplication();
         buildInfoDialog();
         uploadPhoto();
         mTakePhoto = (Button) findViewById(R.id.uploadButtonLc);
@@ -191,24 +197,24 @@ public class UploadPhotoActivity extends Activity implements OnClickListener {
     }
 
     private class UploadTask extends AsyncTask<Integer, Void, Integer> {
-
         protected Integer doInBackground(Integer... arg0) {
             int serverResponseCode = 0;
-            AppGob app = (AppGob) getApplication();
-            if (app == null) return null;
             mCurrentPhotoPath = app.mCurrentPhotoPath;
+            if (app == null) return null;
             String key = "myFile";
             if (mCurrentPhotoPath == null || mCurrentPhotoPath.isEmpty()) return null;
             try {
-                FileInputStream fileInputStream = new FileInputStream(mCurrentPhotoPath);
+                Bitmap bmp = BitmapFactory.decodeFile(mCurrentPhotoPath);
+                ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                bmp.compress(Bitmap.CompressFormat.JPEG, 70, bout);
+                InputStream inputStream = new ByteArrayInputStream(bout.toByteArray());
                 setProgress(0);
-
                 DefaultHttpClient httpclient = new DefaultHttpClient();
                 try {
                     HttpPost httppost = new HttpPost(server); // server path
                     MultipartEntity reqEntity = new MultipartEntity();
                     reqEntity.addPart(key, app.g_placeDetails.getPlace_id() + "_EatGate_" +
-                            System.currentTimeMillis() + ".jpg", fileInputStream); // neuer Filename
+                            System.currentTimeMillis() + ".jpg", inputStream); // neuer Filename
                     httppost.setEntity(reqEntity);
                     Log.i(TAG, "request " + httppost.getRequestLine());
                     HttpResponse response = null;
@@ -230,10 +236,8 @@ public class UploadPhotoActivity extends Activity implements OnClickListener {
                 } finally {
 
                 }
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
             } catch (Exception e) {
-                Log.i("Connection", "maybe no connection to server for file upload!!!");
+                Log.i(TAG, "" + e.getMessage());
             }
             return serverResponseCode;
         }

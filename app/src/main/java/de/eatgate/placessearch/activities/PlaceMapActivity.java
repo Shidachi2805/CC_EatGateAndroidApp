@@ -50,23 +50,26 @@ import de.eatgate.placessearch.services.PlacesService;
 public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
 
     private static final String API_KEY = "AIzaSyAWWG37dcyPNEQNvnP0b-S2-DZxCtKALBY";
-    private final static String Str_aktuellePosition = "Hier bist Du";
+    private final static String STR_AKTUELLEPOSITION = "Hier bist Du";
+    private final String TAG = "LOG_PLACEMAPACTIVITY";
+    private final String YOURPOSTXT = "Deine aktuelle Position";
+    private final int ZOOMFAKTOR = 13;
     private GPS gps;
     // Liste der gefundenen Orte, wird vom Asyn PlacesService mit Daten befuellt
-    private ArrayList<Place> g_places = new ArrayList<Place>();
+    private ArrayList<Place> allFoundPlaces = null;
     // Map speichert die Relation markerId, place_id;
-    private HashMap<String, String> g_marker_id_place_id_map = new HashMap<String, String>();
-    //  private String str_place_id = null;
-    private Marker g_marker = null;
+    private HashMap<String, String> marker_id_place_id_map = null;
+    private Marker markerOpenInfoWindow = null;
     private String types = "meal_takeaway|restaurant|meal_delivery";
-    private String radius = "1000.0";
+    private String radius = "1200.0";
+    private String search_word = "";
     private PlacesService placesService = null;
     private PlaceDetailsService placeDetailsService = null;
-    private GoogleMap g_meinGoogleMap = null;
+    private GoogleMap meinGoogleMap = null;
     private ProgressDialog statusProgress = null;
     private AlertDialog.Builder builder = null;
     private AlertDialog dialog = null;
-    private String search_word = "";
+    private AppGob appGob = null;
 
     private void buildInfoDialog() {
         builder = new AlertDialog.Builder(this);
@@ -88,69 +91,71 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         dialog = builder.create();
     }
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.map_places);
+        marker_id_place_id_map = null;
+        markerOpenInfoWindow = null;
+        allFoundPlaces = null;
+        meinGoogleMap = null;
+        appGob = (AppGob) getApplication();
+        if (appGob == null) {
+            Toast.makeText(this, "Undefinierter Fehler", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, StartActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(intent);
+            finish();
+        }
         Bundle b = getIntent().getExtras();
-        if(b!=null) {
-            search_word = "" + (String) b.get("search_word");
-            Toast.makeText(this, search_word, Toast.LENGTH_LONG).show();
+        // search_word Filter die Suchergebnisse in Google Maps Call
+        // Debug-Version
+        // #Platzhalter --> &type
+        // Zahl --> &radius
+        // Leer-String --> kein Parameter &name
+        // andere --> &name
+        if (b != null) {
+            search_word = "" + b.get("search_word").toString().trim();
+            if (search_word.isEmpty() == false) {
+                Toast.makeText(this, search_word, Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            search_word = "";
         }
         buildInfoDialog();
         if (!InternetManager.isOnline(this)) {
-            Toast.makeText(this, "Keine Internet-Verbindung", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Keine Internet-Verbindung", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, StartActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(intent);
+            finish();
         } else {
             gps = new GPS(this);
             try {
                 gps.getLocation();
-            } catch (Exception e) {
-                Log.e("GPS", "Fehler in GPS Modul");
-            }
-            // check if GPS location can get
-            if (gps.canGetLocation()) {
-                Log.i("Your Location", "latitude: " + gps.getLatitude() + ", longitude: " + gps.getLongitude());
-            } else {
-                Toast.makeText(this, "Keine Positionsbestimmung möglich. Schalten Sie die Standortbestimmung ein!", Toast.LENGTH_SHORT).show();
+                // check if GPS location can get
+                if (gps.canGetLocation()) {
+                    Log.i(TAG, "Your Position in latitude: " + gps.getLatitude() + " : longitude: " + gps.getLongitude());
+                    statusProgress = ProgressDialog.show(this, "Bitte warten ...", "Google Maps wird geladen ...", true, false);
+                    // Call fuer das Finden der Orte - radius, types, name
+                    new GetPlaces(PlaceMapActivity.this, radius, types, search_word).execute();
+                } else {
+                    Toast.makeText(this, "Keine Positionsbestimmung möglich. Schalten Sie die Standortbestimmung ein!", Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(this, StartActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(intent);
+                    finish();
+                }
+            } catch (Exception ex) {
+                Log.e(TAG, "Fehler im GPS Modul!");
+                statusProgress.dismiss();
+                Toast.makeText(this, "Fehler im GPS Modul!", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(this, StartActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);
                 finish();
-                return;
             }
-            statusProgress = ProgressDialog.show(this, "Bitte warten ...", "Google Maps wird geladen ...", true, false);
-            // Call fuer Finden der Orte - radius, types
-            new GetPlaces(PlaceMapActivity.this, radius, types, search_word).execute();
         }
-    }
-
-    /* Wenn GoogleMap geladen, dann  ... */
-    @Override
-    public void onMapReady(GoogleMap map) {
-
-        LatLng aktuellePosition = new LatLng(gps.getLatitude(), gps.getLongitude());
-
-        map.setMyLocationEnabled(true);
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(aktuellePosition, 13));
-
-        map.addMarker(new MarkerOptions()
-                .title(Str_aktuellePosition)
-                .snippet("Deine aktuelle Position")
-                .position(aktuellePosition));
-        // fuer alle gefundenen Orte einen Marker in der Map setzen
-        g_marker_id_place_id_map = new HashMap();
-        for (Place p : g_places) {
-            Marker tmp_marker =
-                    map.addMarker(new MarkerOptions().
-                            position(new LatLng(p.getLatitude(), p.getLongitude())).
-                            icon(BitmapDescriptorFactory.fromResource(R.drawable.mark_red)));
-            g_marker_id_place_id_map.put(tmp_marker.getId(), p.getPlace_id());
-            Log.i("HashMap: ", "key" + tmp_marker.getId());
-            Log.i("HashMap:", "value: " + p.getPlace_id());
-        }
-        g_meinGoogleMap = map;
-        //   new GetPlacesDetails(PlaceMapActivity.this,g_marker.getTitle()).execute();
     }
 
     @Override
@@ -179,10 +184,163 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         return true;
     }
 
-    @Override
     /**
-     * reagiert auf die Klicks in der Actionbar
+     * Wenn Google Map Ready, dann
+     *
+     * @param map
+     * @see PlaceMapActivity.GetPlaces onPostExecute
      */
+    @Override
+    public void onMapReady(GoogleMap map) {
+        Log.i(TAG, "onMapReady wurde aufgerufen!");
+        if (map == null) {
+            Log.e(TAG, "Map is null");
+            Intent intent = new Intent(this, StartActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(intent);
+            finish();
+            return;
+        }
+        // Positon wird aus der GPS-Klasse ermittelt, dafuer muss eine Positionsbestimmung
+        // moeglich sein, ansonsten beendet die Activity und kehrt zur StartActivity zurueck
+        // dies wird in der OnCreate geprueft
+        LatLng aktuellePosition = new LatLng(gps.getLatitude(), gps.getLongitude());
+        Log.i(TAG, "Your location for MAPS: " + gps.getLatitude() + ":" + gps.getLongitude());
+        map.setMyLocationEnabled(true);
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(aktuellePosition, ZOOMFAKTOR));
+        map.addMarker(new MarkerOptions()
+                .title(STR_AKTUELLEPOSITION)
+                .snippet(YOURPOSTXT)
+                .position(aktuellePosition));
+        // fuer alle gefundenen Orte einen Marker in der Map setzen
+        marker_id_place_id_map = new HashMap();
+        if (allFoundPlaces == null || allFoundPlaces.isEmpty()) {
+            Log.i(TAG, "Keine Locations gefunden!");
+        } else {
+            // fuer jeden gefunden Ort einen Marker in der Map setzen
+            // und in einer Marker-HashMap speichern
+            for (Place p : allFoundPlaces) {
+                Marker tmp_marker =
+                        map.addMarker(new MarkerOptions().
+                                position(new LatLng(p.getLatitude(), p.getLongitude())).
+                                icon(BitmapDescriptorFactory.fromResource(R.drawable.mark_red)));
+                marker_id_place_id_map.put(tmp_marker.getId(), p.getPlace_id());
+                Log.i(TAG, "HashMap:  key" + tmp_marker.getId());
+                Log.i(TAG, "HashMap: value: " + p.getPlace_id());
+            }
+        }
+        setMeinGoogleMap(map);
+    }
+
+    private void setMeinGoogleMap(GoogleMap map) {
+        meinGoogleMap = map;
+        Log.i(TAG, "setInfoWindowAdpater fuer GoogleMap!");
+        meinGoogleMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+            // bevor das InfoFenster erzeugt wird
+            @Override
+            public View getInfoWindow(Marker marker) {
+                if (marker.getTitle() != null && marker.getTitle().equals(STR_AKTUELLEPOSITION)) {
+                    // Info Fenster wird nicht angezeigt
+                    Log.i(TAG, "getInfoWindow Marker ist null oder STR_AKTUELLEPOSITION");
+                    return null;
+                }    // toDo Exception einbauen fuer Keynotfound
+                String cur_place_id = marker_id_place_id_map.get(marker.getId());
+                // Aufruf der privaten Klasse  GetPlacesDetails, die den Service PlaceDetailsService aufruft
+                Log.i(TAG, "GetPlacesDetails wird aufgerufen mit Place_id " + cur_place_id);
+                new GetPlacesDetails(cur_place_id).execute();
+                Log.i(TAG, "GetPlacesDetails wurde aufgerufen");
+                return null;
+            }
+
+            @Override
+            public View getInfoContents(Marker marker) {
+                if (marker.getTitle() != null && marker.getTitle().equals(STR_AKTUELLEPOSITION)) {
+                    // Info Fenster wird nicht angezeigt
+                    return null;
+                }
+                markerOpenInfoWindow = marker;
+                // setzen des ClickListeners, wenn auf das Infofenster selbst geklickt wird
+                meinGoogleMap.setOnMapClickListener(
+                        new GoogleMap.OnMapClickListener() {
+                            @Override
+                            public void onMapClick(LatLng latLng) {
+                                Log.i(TAG, "Map Location Info Window is open now!");
+                            }
+                        }
+                );
+                LayoutInflater layoutInflater = (LayoutInflater) getBaseContext().getSystemService
+                        (Context.LAYOUT_INFLATER_SERVICE);
+                View view = layoutInflater.inflate(R.layout.mapinfolayout, null);
+                view.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+
+                Log.i(YOURPOSTXT, "markerOpenInfoWindow: Titel ist " + markerOpenInfoWindow.getTitle());
+                int counter = 0;
+                appGob = (AppGob) getApplication();
+                if (appGob == null) return null;
+                // Infofenster wird erst angezeigt, wenn der Webservice - Call geantwortet
+                // hat, nach 10*20 Millisekunden wird abgebrochen
+                while (appGob.g_placeDetails == null && counter <= 1000) {
+                    try {
+                        Thread.sleep(50);
+                    } catch (Exception e) {
+                        Log.e("OnPostExecutePlaceMapActitivy", "Interrupt Exception");
+                        Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Probleme mit der Internetverbindung!", Toast.LENGTH_LONG).show();
+                        statusProgress.dismiss();
+                        Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        startActivity(intent);
+                        finish();
+                    }
+                    counter++;
+                }
+
+                if (appGob.g_placeDetails == null) {
+                    Log.e("OnPostExecutePlaceMapActitivy", "g_placeDetails ist null!");
+                    Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Probleme mit der Internetverbindung!", Toast.LENGTH_LONG).show();
+                    Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    statusProgress.dismiss();
+                    startActivity(intent);
+                    finish();
+                } else {
+                    TextView textView_infoName = (TextView) view.findViewById(R.id.info_name);
+                    TextView textView_infoAdresse = (TextView) view.findViewById(R.id.info_adresse);
+                    textView_infoName.setText(appGob.g_placeDetails.getName());
+                    textView_infoAdresse.setText(appGob.g_placeDetails.getVicinity());
+                    RatingBar ratingBar = (RatingBar) view.findViewById(R.id.ratingBar1);
+                    if (appGob.g_placeDetails.getArrRev() != null) {
+
+                        double ratitng_sum = 0;
+                        int anzahl = 0;
+                        for (int i = 0; i < appGob.g_placeDetails.getArrRev().size(); i++) {
+                            if (appGob.g_placeDetails.getArrRev().get(i).getRating() > 0) {
+                                ratitng_sum = ratitng_sum + appGob.g_placeDetails.getArrRev().get(i).getRating();
+                                anzahl++;
+                            }
+                        }
+                        // Setze Rating in g_placeDetails auf Durchschnittswertung
+                        if (anzahl != 0) {
+                            ratingBar.setRating((float) ratitng_sum / anzahl);
+                            appGob.g_placeDetails.setRating(ratitng_sum / anzahl);
+                        } else {
+                            ratingBar.setRating(0);
+                            appGob.g_placeDetails.setRating(0);
+                        }
+                    }
+                }
+                return view;
+            }
+        });
+    }
+
+
+    /**
+     * Reagiert auf Clicks in der Actionbar
+     * @param item
+     * @return
+     */
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
@@ -202,7 +360,6 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
 
     /**
      * Erzeugt das Popup Menu und registriert den ClickListener fuer das Submenu
-     *
      * @param v
      */
     public void onClickMainMenu(View v) {
@@ -242,6 +399,7 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
             this.types = types;
             this.radius = radius;
             this.searchWord = searchWord;
+            Log.i(TAG, "Initialisiere GetPlaces: " + types + ":" + radius + ":" + searchWord + "!");
         }
 
         /**
@@ -249,11 +407,13 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
          */
         @Override
         protected void onPreExecute() {
-            super.onPreExecute();
+            // super.onPreExecute();
+            Log.i(TAG, "OnPreEexecute breitet GetPlaces Call vor!");
             // Liste der gefundenen Orte wird neu mit leerer Liste initialisiert
-            g_places = new ArrayList<Place>();
+            allFoundPlaces = new ArrayList<Place>();
             // creating PlacesService class object
             placesService = new PlacesService(API_KEY, radius, types, searchWord);
+            Log.i(TAG, "OnPreEexecute hat GetPlaces Call vorbereitet!");
         }
 
         /**
@@ -261,127 +421,40 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
          */
         protected String doInBackground(Void... arg0) {
             try {
-                g_places = placesService.findPlaces(gps.getLatitude(),
+                Log.i(TAG, "PlacesService findPlaces wird aufgerufen!");
+                allFoundPlaces = placesService.findPlaces(gps.getLatitude(),
                         gps.getLongitude());
+                Log.i(TAG, "PlacesService findPlaces hat Ergebnis geliefert! ");
             } catch (Exception e) {
+                Log.e(TAG, "PlacesService verursacht Fehler!");
                 Toast.makeText(PlaceMapActivity.this,
                    "Fehler! Wahrscheinlich Probleme mit der Internetverbindung oder Ortsbestimmung!",
-                    Toast.LENGTH_LONG).show();
+                        Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);
                 finish();
+                return "";
             }
-            Log.i("Info", "Place_Anzahl: " + g_places.size());
+            Log.i(TAG, "Place_Anzahl: " + allFoundPlaces.size());
             return "";
         }
 
-        /**
-         * After completing background task Dismiss the progress dialog
-         * and show the data in UI
-         * Always use runOnUiThread(new Runnable()) to update UI from background
-         * thread, otherwise you will get error
-         * *
-         */
+        @Override
         protected void onPostExecute(String file_url) {
+            statusProgress.dismiss();
             try {
-                // wenn Call zum Finden der Orte zurueck ist dann wird die GoogleMap geladen
-                MapFragment mapFragment = (MapFragment) getFragmentManager()
+                // wenn Call zum Finden der Orte zurueck ist, dann wird die GoogleMap geladen
+                MapFragment mapFragment = (MapFragment) PlaceMapActivity.this.getFragmentManager()
                         .findFragmentById(R.id.map);
                 // ruft danach die OnMapReady auf
+                Log.i(TAG, "getMapAsync wird jetzt aufgerufen!");
                 mapFragment.getMapAsync(PlaceMapActivity.this);
-                g_meinGoogleMap = mapFragment.getMap();
+                Log.i(TAG, "getMapAsync wurde aufgerufen!");
+
+                Log.i(TAG, "mapFragment wurde aufgerufen!");
                 // setzen des Infofensters, welches angezeigt wird, wenn auf einen Marker geklickt wird
-                g_meinGoogleMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
-                    // bevor das InfoFenster erzeugt wird
-                    @Override
-                    public View getInfoWindow(Marker marker) {
-                        if (marker.getTitle() != null && marker.getTitle().equals(Str_aktuellePosition)) {
-                            return null;
-                        }    // Exception einbauen fuer Keynotfound
-                        String cur_place_id = g_marker_id_place_id_map.get(marker.getId());
-                        // Aufruf der privaten Klasse  GetPlacesDetails, die den Service PlaceDetailsService aufruft
-                        new GetPlacesDetails(PlaceMapActivity.this, cur_place_id).execute();
-                        return null;
-                    }
 
-                    @Override
-                    public View getInfoContents(Marker marker) {
-                        if (marker.getTitle() != null && marker.getTitle().equals(Str_aktuellePosition)) {
-                            return null;
-                        }
-                        g_marker = marker;
-                        // setzen des ClickListeners, wenn auf das Infofenster selbst geklickt wird
-                        g_meinGoogleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
-                                                                  @Override
-                                                                  public void onMapClick(LatLng latLng) {
-                                                                      Log.e("onMapClick", "Click me : yes");
-                                                                  }
-                                                              }
-                        );
-                        LayoutInflater layoutInflater = (LayoutInflater) getBaseContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-
-                        // Log.e("View_LayoutInflater", "view " + layoutInflater);
-                        View view = layoutInflater.inflate(R.layout.mapinfolayout, null);
-                        view.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-                        Log.e("GetPlaces_onPostExecute", "g_marker_Titel: " + g_marker.getTitle());
-                        int counter = 0;
-                        AppGob app = (AppGob) getApplication();
-                        if (app == null) return null;
-                        // Infofenster wird erst angezeigt, wenn der Webservice - Call geantwortet
-                        // hat, nach 10*20 Millisekunden wird abgebrochen
-                        while (app.g_placeDetails == null && counter <= 100) {
-                            try {
-                                Thread.sleep(20);
-                            } catch (Exception e) {
-                                Log.e("OnPostExecutePlaceMapActitivy", "Interrupt Exception");
-                                Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Probleme mit der Internetverbindung!", Toast.LENGTH_LONG).show();
-                                statusProgress.dismiss();
-                                Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
-                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                                startActivity(intent);
-                                finish();
-                            }
-                            counter++;
-                        }
-
-                        if (app.g_placeDetails == null) {
-                            Log.e("OnPostExecutePlaceMapActitivy", "g_placeDetails ist null!");
-                            Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Probleme mit der Internetverbindung!", Toast.LENGTH_LONG).show();
-                            Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
-                            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                            startActivity(intent);
-                            finish();
-                        } else {
-                            TextView textView_infoName = (TextView) view.findViewById(R.id.info_name);
-                            TextView textView_infoAdresse = (TextView) view.findViewById(R.id.info_adresse);
-                            textView_infoName.setText(app.g_placeDetails.getName());
-                            textView_infoAdresse.setText(app.g_placeDetails.getVicinity());
-                            RatingBar ratingBar = (RatingBar) view.findViewById(R.id.ratingBar1);
-                            if (app.g_placeDetails.getArrRev() != null) {
-
-                                double ratitng_sum = 0;
-                                int anzahl = 0;
-                                for (int i = 0; i < app.g_placeDetails.getArrRev().size(); i++) {
-                                    if (app.g_placeDetails.getArrRev().get(i).getRating() > 0) {
-                                        ratitng_sum = ratitng_sum + app.g_placeDetails.getArrRev().get(i).getRating();
-                                        anzahl++;
-                                    }
-                                }
-                                // Setze Rating in g_placeDetails auf Durchschnittswertung
-                                if (anzahl != 0) {
-                                    ratingBar.setRating((float) ratitng_sum / anzahl);
-                                    app.g_placeDetails.setRating(ratitng_sum / anzahl);
-                                } else {
-                                    ratingBar.setRating(0);
-                                    app.g_placeDetails.setRating(0);
-                                }
-                            }
-                        }
-                        return view;
-                    }
-                });
             } catch (Exception e) {
                 Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Google Play Dienste nicht installiert!", Toast.LENGTH_LONG).show();
                 statusProgress.dismiss();
@@ -390,9 +463,10 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
                 startActivity(intent);
                 finish();
             }
-            statusProgress.dismiss();
+
         }
     }
+
 
     /**
      * Call der aufgefuehrt wird, wenn Details zu einem Ort abgefragt werden sollen
@@ -400,10 +474,8 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
     private class GetPlacesDetails extends AsyncTask<Void, Void, String> {
 
         private String places_id;
-        private Context context;
 
-        public GetPlacesDetails(Context context, String places_id) {
-            this.context = context;
+        public GetPlacesDetails(String places_id) {
             this.places_id = places_id;
         }
 
@@ -413,9 +485,8 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            AppGob app = (AppGob) getApplication();
-            app.g_placeDetails = null;
-            g_marker = null;
+            appGob.g_placeDetails = null;
+            markerOpenInfoWindow = null;
         }
 
         /**
@@ -424,13 +495,13 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
         protected String doInBackground(Void... arg0) {
             // creating Places class object
             try {
+                Log.i(TAG, "Before Call placeDetailsService");
                 placeDetailsService = new PlaceDetailsService(API_KEY, places_id);
-                AppGob app = (AppGob) getApplication();
-                app.g_placeDetails = placeDetailsService.findPlaceDetails();
-                Log.i("GetPlacesDetails", " PlaceDetails: " + app.g_placeDetails.getName());
+                appGob.g_placeDetails = placeDetailsService.findPlaceDetails();
+                Log.i(TAG, " PlaceDetails: " + appGob.g_placeDetails.getName());
                 return "";
             } catch (Exception e) {
-                Log.e("doInBackgroundMapActivity", "Webservice Exception");
+                Log.e(TAG, "Webservice Exception");
                 statusProgress.dismiss();
                 Toast.makeText(PlaceMapActivity.this, "Fehler! Wahrscheinlich Probleme mit der Internetverbindung!", Toast.LENGTH_LONG).show();
                 Intent intent = new Intent(PlaceMapActivity.this, StartActivity.class);
@@ -449,28 +520,26 @@ public class PlaceMapActivity extends Activity implements OnMapReadyCallback {
          * *
          */
         protected void onPostExecute(String file_url) {
-            g_meinGoogleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+            meinGoogleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
 
                 @Override
                 public void onInfoWindowClick(Marker marker) {
                     if (marker == null) {
-                        Log.e("MapActivity: ", "Marker ist null");
+                        Log.e(TAG, "Marker ist null");
                     } else {
-                        Log.e("MapActivity: ", "Marker ist nicht null");
-                        //str_place_id = marker.getTitle();
+                        Log.i(TAG, "Marker ist nicht null");
                     }
-                    AppGob app = (AppGob) getApplication();
-                    if (app != null && !g_marker.getTitle().equals(Str_aktuellePosition) && app.g_placeDetails != null) {
+                    if (appGob != null && !markerOpenInfoWindow.getTitle().equals(STR_AKTUELLEPOSITION) && appGob.g_placeDetails != null) {
                         // Starten einer neuen Activity, welches dies PlaceDetails anzeigt
                         Intent intent = new Intent(PlaceMapActivity.this, SinglePlacesActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                         startActivity(intent);
                         // finish();
                     }
                 }
             });
-            AppGob app = (AppGob) getApplication();
-            if (app != null && app.g_placeDetails != null) {
-                g_marker.setTitle(app.g_placeDetails.getName());
+            if (appGob != null && appGob.g_placeDetails != null) {
+                markerOpenInfoWindow.setTitle(appGob.g_placeDetails.getName());
             }
         }
     }

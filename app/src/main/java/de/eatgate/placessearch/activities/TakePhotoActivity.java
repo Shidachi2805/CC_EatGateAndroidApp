@@ -45,6 +45,7 @@ public class TakePhotoActivity extends Activity {
     private AlertDialog dialog = null;
     private Uri fileUri = null;
     private ImageView photoImage = null;
+    private AppGob app = null;
 
     private void buildInfoDialog() {
         builder = new AlertDialog.Builder(this);
@@ -70,9 +71,8 @@ public class TakePhotoActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_take_photo);
+        app = (AppGob) getApplication();
         buildInfoDialog();
-        // photoImage = (ImageView) findViewById(R.id.photo_image);
-        // photoImage.setImageDrawable(null);
         Button callCameraButton = (Button) findViewById(R.id.btnCamera);
         // startet die Camera
         callCameraButton.setOnClickListener(new View.OnClickListener() {
@@ -84,16 +84,6 @@ public class TakePhotoActivity extends Activity {
                 startActivityForResult(i, CAPTURE_IMAGE_ACTIVITY_REQ);
             }
         });
-    /*  Button toUploadButton = (Button) findViewById(R.id.btnToUpload);
-        toUploadButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View view) {
-                // Starten einer neuen Activity, die zur Upload Activity fuehrt
-                Intent intent = new Intent(TakePhotoActivity.this, UploadPhotoActivity.class);
-                startActivity(intent);
-                // Die derzeitige Activity beenden
-                finish();
-            }
-        });*/
     }
 
     /**
@@ -156,7 +146,6 @@ public class TakePhotoActivity extends Activity {
      */
     public void onClickMainMenu(View v) {
         PopupMenu popup = new PopupMenu(this, v);
-
         MenuInflater inflater = popup.getMenuInflater();
         inflater.inflate(R.menu.menu_main_popsub, popup.getMenu());
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
@@ -177,6 +166,9 @@ public class TakePhotoActivity extends Activity {
         popup.show();
     }
 
+    /**
+     * @return
+     */
     private File getOutputPhotoFile() {
         File directory = new File(Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_PICTURES), getPackageName());
@@ -188,12 +180,9 @@ public class TakePhotoActivity extends Activity {
         }
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File filePhoto = null;
-        synchronized (this) {
-            AppGob app = (AppGob) getApplication();
-            app.mCurrentPhotoPath = directory.getPath() + File.separator + "IMG_"
-                    + timeStamp + ".jpg";
-            filePhoto = new File(app.mCurrentPhotoPath);
-        }
+        app.mCurrentPhotoPath = directory.getPath() + File.separator + "IMG_"
+                + timeStamp + ".jpg";
+        filePhoto = new File(app.mCurrentPhotoPath);
         return filePhoto;
     }
 
@@ -213,14 +202,6 @@ public class TakePhotoActivity extends Activity {
                     // A known bug here! The image should have saved in fileUri
                     Toast.makeText(this, "Anklicken startet Upload!",
                             Toast.LENGTH_LONG).show();
-                    // photoUri =  fileUri;
-                  /*  AppGob app = (AppGob) getApplication();
-                    String photoPath = app.mCurrentPhotoPath;
-                    if(photoPath.isEmpty() || photoPath == null) {
-                        Log.e("GalleryAddPic: ", "Photopath is empty");
-                    }
-                    File f = new File(photoPath);
-                    photoUri = Uri.fromFile(f);*/
                 } else {
                     photoUri = data.getData();
                     fileUri = photoUri;
@@ -230,6 +211,7 @@ public class TakePhotoActivity extends Activity {
                 try {
                     // bimatp factory
                     BitmapFactory.Options options = new BitmapFactory.Options();
+                    // Verkleinern des Bildes
                     options.inSampleSize = 4;
                     final Bitmap bitmap = BitmapFactory.decodeFile(fileUri.getPath(), options);
                     // photoImage.setAdjustViewBounds(true);
@@ -243,7 +225,6 @@ public class TakePhotoActivity extends Activity {
                     image.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
-                            // toDo FileUpload
                             Intent intent = new Intent(TakePhotoActivity.this, UploadPhotoActivity.class);
                             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
                             startActivity(intent);
@@ -263,6 +244,10 @@ public class TakePhotoActivity extends Activity {
         }
     }
 
+    /**
+     * @deprecated
+     * @param photoUri
+     */
     private void showPhoto(Uri photoUri) {
         File imageFile = new File(photoUri.getPath());
         if (imageFile.exists()) {
@@ -280,6 +265,10 @@ public class TakePhotoActivity extends Activity {
         }
     }
 
+    /**
+     * @deprecated
+     * @param data
+     */
     private void addPic(Intent data) {
         // auslesen des gespeicherten Foto nur Thumbnail mindere Qualität
         Bitmap photo = (Bitmap) data.getExtras().get("data");

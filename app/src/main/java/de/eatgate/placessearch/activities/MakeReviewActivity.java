@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.AsyncTask;
@@ -205,9 +204,9 @@ public class MakeReviewActivity extends Activity {
         if (id == R.id.action_menu) {
             onClickMainMenu(menuItemView);
         } else if (id == R.id.action_back) {
-            Intent intent = new Intent(this, SinglePlacesActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            startActivity(intent);
+            // Intent intent = new Intent(this, SinglePlacesActivity.class);
+            // intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            // startActivity(intent);
             finish();
         }
         return super.onOptionsItemSelected(item);
@@ -308,9 +307,9 @@ public class MakeReviewActivity extends Activity {
             Log.i("JSON Log", "onPostExecute " + code);
             if (code == 201) {
                 Toast.makeText(MakeReviewActivity.this, "Succcess: " + code + "!", Toast.LENGTH_LONG).show();
-                Intent intent = new Intent(MakeReviewActivity.this, PlaceMapActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                startActivity(intent);
+                // Intent intent = new Intent(MakeReviewActivity.this, PlaceMapActivity.class);
+                // intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                // startActivity(intent);
                 finish();
             } else {
                 Toast.makeText(MakeReviewActivity.this, "Error! Try again!", Toast.LENGTH_LONG).show();

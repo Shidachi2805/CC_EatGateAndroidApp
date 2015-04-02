@@ -1,18 +1,15 @@
 package de.eatgate.placessearch.services;
 
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import android.util.Log;
 
 import de.eatgate.placessearch.entities.Place;
 
@@ -23,10 +20,12 @@ import de.eatgate.placessearch.entities.Place;
  */
 public class PlacesService {
 
-	private String API_KEY;
+    private final String TAG = "LOG_PLACESSERVICE";
+    private String API_KEY;
     private String radius;
     private String types;
     private String searchWord;
+    private String name;
 
 	public PlacesService(String apikey, String radius, String types, String searchWord) {
         // Standard Suchparameter
@@ -34,96 +33,100 @@ public class PlacesService {
         this.radius = radius;
         this.types = types;
         this.searchWord = "";
+        this.name = null;
         // Debug Parameter
-        if(!searchWord.isEmpty()) {
-            try {
-               radius = "" + Double.parseDouble(searchWord);
-               this.radius = radius;
-               this.searchWord = "";
-            } catch (NumberFormatException e)  {
-                searchWord = searchWord.trim();
-                if(searchWord.startsWith("#")) {
-                    this.types=searchWord.substring(1);
+        if (searchWord.isEmpty() == false) {
+            if (searchWord.startsWith("*")) {
+                // radarsearch mit name
+                this.name = null;
+                this.radius = "5000.0";
+                this.searchWord = searchWord.substring(1);
+            } else {
+                // radarsearch ohne name oder mit radius angabe
+                try {
+                    radius = "" + Double.parseDouble(searchWord);
+                    this.radius = radius;
                     this.searchWord = "";
-                } else {
-                    this.searchWord = searchWord;
+                } catch (NumberFormatException e) {
+                    this.searchWord = "";
+                    this.name = "";
                 }
             }
         } else {
+            // normale Suche
             this.searchWord = "";
+            this.name = "";
         }
-	}
+        Log.i(TAG, "Initialisiert " + this.types + ":" + this.searchWord);
+    }
 
 	public void setApiKey(String apikey) {
 		this.API_KEY = apikey;
 	}
 
-	public ArrayList<Place> findPlaces(double latitude, double longitude) {
-
-		String urlString = makeUrl(latitude, longitude);
-
-		try {
-			String json = getJSON(urlString);
-
-			System.out.println(json);
-			JSONObject object = new JSONObject(json);
-			JSONArray array = object.getJSONArray("results");
-
-			ArrayList<Place> arrayList = new ArrayList<Place>();
-			for (int i = 0; i < array.length(); i++) {
-				try {
-					Place place = Place
+    public ArrayList<Place> findPlaces(double latitude, double longitude) throws Exception {
+        Log.i(TAG, "Bereite makeurl vor");
+        String urlString = makeUrl(latitude, longitude);
+        Log.i(TAG, "url:" + urlString);
+        String json = getJSON(urlString);
+        Log.i(TAG, "JSON: " + json);
+        JSONObject object = new JSONObject(json);
+        JSONArray array = object.getJSONArray("results");
+        ArrayList<Place> arrayList = new ArrayList<Place>();
+        for (int i = 0; i < array.length(); i++) {
+            try {
+                Place place = Place
 							.jsonToPlace((JSONObject) array.get(i));
 					Log.v("Places Services ", "Place_id: " + place.getPlace_id());
 					arrayList.add(place);
 				} catch (Exception e) {
-
-				}
+                Log.i(TAG, "Exception jsonToPlace: " + e.getMessage());
+                throw new Exception(e.getMessage());
+            }
 			}
-			return arrayList;
-		} catch (JSONException ex) {
-		        Logger.getLogger(PlacesService.class.getName()).log(Level.SEVERE,
-					null, ex);
-		}
-		return null;
-	}
+        return arrayList;
+    }
 
 	// https://maps.googleapis.com/maps/api/place/search/json?location=28.632808,77.218276&radius=500&types=atm&sensor=false&key=apikey
 	private String makeUrl(double latitude, double longitude) {
-		StringBuilder urlString = new StringBuilder(
-				"https://maps.googleapis.com/maps/api/place/radarsearch/json?");
-
-		if (types.equals("")) {
-			urlString.append("&location=");
-			urlString.append(Double.toString(latitude));
-			urlString.append(",");
-			urlString.append(Double.toString(longitude));
-			urlString.append("&radius=" + radius);
-            if(!searchWord.isEmpty()) {
-                urlString.append("&name=" + searchWord);
-            }
-			urlString.append("&sensor=true&key=" + API_KEY);
-		} else {
-            // zum Test bestimmter Koord
-            //latitude = 50.54335;
-            //longitude = 9.675329;
+        // zum Test bestimmter Koord
+        // latitude = 50.54335;
+        // longitude = 9.675329;
+        if (this.name == null) {
+            StringBuilder urlString = new StringBuilder(
+                    "https://maps.googleapis.com/maps/api/place/radarsearch/json?");
             urlString.append("location=");
             urlString.append(Double.toString(latitude));
             urlString.append(",");
             urlString.append(Double.toString(longitude));
-            urlString.append("&types="+types);
-            //urlString.append("&types=Frankfurt+am+Main");
-            //urlString.append("&rankby=distance");
-            urlString.append("&pagetoken");
+            urlString.append("&types=" + types);
+            urlString.append("&rankby=distance");
+            // urlString.append("&pagetoken");
             urlString.append("&radius=" + radius);
             // urlString.append("&country=Fulda");
-            if(!searchWord.isEmpty()) {
-                urlString.append("&name=" + searchWord);
-            }
-			urlString.append("&sensor=true&key=" + API_KEY);
-		}
-		return urlString.toString();
-	}
+            //urlString.append("&keyword=" + searchWord);
+            urlString.append("&name=" + this.searchWord);
+            urlString.append("&sensor=false&key=" + API_KEY);
+            Log.i(TAG, "*" + urlString.toString());
+            return urlString.toString();
+        } else {
+            StringBuilder urlString = new StringBuilder(
+                    "https://maps.googleapis.com/maps/api/place/radarsearch/json?");
+            urlString.append("location=");
+            urlString.append(Double.toString(latitude));
+            urlString.append(",");
+            urlString.append(Double.toString(longitude));
+            urlString.append("&types=" + types);
+            // urlString.append("&types=Frankfurt+am+Main");
+            // urlString.append("&rankby=distance");
+            // urlString.append("&pagetoken");
+            urlString.append("&radius=" + radius);
+            // urlString.append("&country=Fulda");
+            urlString.append("&sensor=false&key=" + API_KEY);
+            Log.i(TAG, "#" + urlString.toString());
+            return urlString.toString();
+        }
+    }
 
 	protected String getJSON(String url) {
 		return getUrlContents(url);
@@ -143,8 +146,8 @@ public class PlacesService {
 			}
 			bufferedReader.close();
 		} catch (Exception e) {
-            Log.e("Catch me, ", "if you can!");
-			e.printStackTrace();
+            Log.e(TAG, e.getMessage());
+            e.printStackTrace();
 		}
 		return content.toString();
 	}
