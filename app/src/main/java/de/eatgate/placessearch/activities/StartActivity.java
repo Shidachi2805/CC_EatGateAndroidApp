@@ -3,20 +3,29 @@ package de.eatgate.placessearch.activities;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.internal.widget.AdapterViewCompat;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import de.eatgate.placessearch.R;
 import de.eatgate.placessearch.global.AppGob;
@@ -30,15 +39,20 @@ import de.eatgate.placessearch.helpers.InternetManager;
  * toDo Auswahl von Rubriken, Auswahl des Radius
  */
 public class StartActivity extends Activity {
+    private final static String TVLOC = "Ort eingeben";//< Ort eingeben Bsp. Berlin >";
+    private final static String TAG = "LOG_STARTACTIVITY";
+    private final static String TVTXT = "Suche eingeben"; //< Suche eingeben Bsp. Pizza >";
     private static GPSManager gpsManager;
     private TextView textViewGPS;
     private Button btnToMapActivity;
     private AlertDialog.Builder builder = null;
     private AlertDialog dialog = null;
+    private Button btnToListActivity;
+    private HashMap<String, Koord> koordinates;
+    // private final static String TXT = "TEXTSUCHE";
+    // private final static String LOCATION = "STANDORTSUCHE";
+    private List<String> names;
 
-    /**
-     * Einfacher Dialogbuilder fuer die InfoBox
-     */
     private void buildInfoDialog() {
         builder = new AlertDialog.Builder(this);
         builder.setTitle("About");
@@ -64,6 +78,27 @@ public class StartActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
         buildInfoDialog();
+        fillGeoLocations();
+        AutoCompleteTextView tv = (AutoCompleteTextView) findViewById(R.id.search_word);
+        tv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AutoCompleteTextView tv = (AutoCompleteTextView) v;
+                if (tv.getText().toString().contains(TVTXT)) {
+                    tv.setText("");
+                }
+            }
+        });
+        tv.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                AutoCompleteTextView tv = (AutoCompleteTextView) v;
+                if (tv.getText().toString().contains(TVTXT)) {
+                    tv.setText("");
+                }
+                return false;
+            }
+        });
 
         // toDo User Login : fuer ersten Release ist der User immer als User mit Id 1 eingeloggt
         AppGob app = (AppGob) getApplication();
@@ -73,32 +108,83 @@ public class StartActivity extends Activity {
         gpsManager = new GPSManager(this, textViewGPS);
         gpsManager.checkCpsConNw(); // prueft ob Position des Devices bestimmt werden kann
         // und setzt das Textfeld in der View mit dem Ort
-        btnToMapActivity = (Button) findViewById(R.id.btnToMap);
+
+        // Standortsuche
+        btnToMapActivity = (Button) findViewById(R.id.btnStartToMap);
         btnToMapActivity.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 boolean bInternet = InternetManager.isOnline(StartActivity.this);
                 boolean bGPS = gpsManager.isGPS();
                 if (bInternet) {
-                    TextView tv = (TextView) (StartActivity.this).findViewById(R.id.search_word);
-                    String search_word = tv.getText().toString();
+                    TextView tv1 = (TextView) (StartActivity.this).findViewById(R.id.search_word);
+                    TextView tv2 = (TextView) (StartActivity.this).findViewById(R.id.autoCompleteTextView);
+                    if (tv1.getText().toString().contains(TVTXT)) {
+                        tv1.setText("");
+                    }
+                    if (tv2.getText().toString().contains(TVLOC)) {
+                        tv2.setText("");
+                    }
+                    String search_word = tv1.getText().toString().trim();
+                    String location_word = tv2.getText().toString().trim();
                     // nur wenn Internetverbindung vorhanden, kann die Map gestartet werden
                     Intent intent = new Intent(StartActivity.this, PlaceMapActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    // intent.putExtra("flag",LOCATION);
+                    if (location_word != null && !location_word.isEmpty()) {
+                        Koord koordinate = koordinates.get(location_word);
+                        if (koordinate != null) {
+                            intent.putExtra("lng", koordinate.getLng());
+                            intent.putExtra("lat", koordinate.getLat());
+                        } else {
+                            // nichts gefunden
+                            intent.putExtra("lng", 0.0);
+                            intent.putExtra("lat", 0.0);
+                            intent.putExtra("location_word", "");
+                        }
+
+                    }
+                    Log.i(TAG, "Locationword:" + location_word);
+                    intent.putExtra("search_word", search_word);
+                    intent.putExtra("location_word", location_word);
+                    startActivity(intent);
+                    finish();
+                } else {
+                    Toast.makeText(StartActivity.this, " Keine Internetverbindung !",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        // prüft ob Internetverbindung verfügbar
+        if (!InternetManager.isOnline(this)) {
+            Toast.makeText(this,
+                    " Keine Internetverbindung ! ", Toast.LENGTH_SHORT).show();
+        }
+        // Textsuche
+        btnToListActivity = (Button) findViewById(R.id.btnStartToList);
+        btnToListActivity.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean bInternet = InternetManager.isOnline(StartActivity.this);
+                boolean bGPS = gpsManager.isGPS();
+                if (bInternet) {
+                    TextView tv1 = (TextView) (StartActivity.this).findViewById(R.id.search_word);
+                    TextView tv2 = (TextView) (StartActivity.this).findViewById(R.id.autoCompleteTextView);
+                    String search_word = tv1.getText().toString().trim();
+                    String location_word = tv2.getText().toString().trim();
+                    Intent intent = new Intent(StartActivity.this, PlaceListActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    // intent.putExtra("flag", TXT);
+                    intent.putExtra("location_word", location_word);
                     intent.putExtra("search_word", search_word);
                     startActivity(intent);
                     finish();
                 } else {
                     Toast.makeText(StartActivity.this, " Keine Internetverbindung !",
-                            Toast.LENGTH_LONG).show();
+                            Toast.LENGTH_SHORT).show();
                 }
             }
         });
-        // macht den Nutzer beim Start aufmerksam, das Device im Moment keine Internetverbindung hat
-        if (!InternetManager.isOnline(this)) {
-            Toast.makeText(this,
-                    " Keine Internetverbindung ! ", Toast.LENGTH_SHORT).show();
-        }
     }
 
     @Override
@@ -194,6 +280,100 @@ public class StartActivity extends Activity {
             }
         });
         popup.show();
+    }
+
+    /**
+     * TODO Read from Database
+     */
+    private void initGeoLocations() {
+        names = new ArrayList<String>();
+        names.add("Fulda");
+        names.add("Frankfurt");
+        names.add("Berlin");
+        names.add("Würzburg");
+        names.add("Hamburg");
+        names.add("Hanau");
+        // latitude = 50.54335;
+        // longitude = 9.675329;
+        koordinates = new HashMap<String, Koord>();
+        koordinates.put(names.get(0), new Koord(9.675329, 50.54335));
+        koordinates.put(names.get(1), new Koord(8.6799935, 50.112857));
+        koordinates.put(names.get(2), new Koord(13.369423, 52.525348));
+        koordinates.put(names.get(3), new Koord(9.935791, 49.801938));
+        koordinates.put(names.get(4), new Koord(10.006164, 53.553485));
+        koordinates.put(names.get(5), new Koord(8.929021, 50.121177));
+    }
+
+    public void fillGeoLocations() {
+        initGeoLocations();
+        AutoCompleteTextView autoTV = (AutoCompleteTextView) findViewById(R.id.autoCompleteTextView);
+        autoTV.setAdapter(new ListViewAdapter_Locs(StartActivity.this.getApplicationContext(), names));
+        autoTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AutoCompleteTextView tv = (AutoCompleteTextView) v;
+                if (tv.getText().toString().contains(TVLOC)) {
+                    tv.setText("");
+                }
+            }
+        });
+        autoTV.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                AutoCompleteTextView tv = (AutoCompleteTextView) v;
+                if (tv.getText().toString().contains(TVLOC)) {
+                    tv.setText("");
+                }
+                return false;
+            }
+        });
+        //  mKontaktAdapter =
+        //          new ArrayAdapter<String>(this,
+        //                  android.R.layout.simple_list_item_1, NAMES); // (4)
+        //  setListAdapter(mKontaktAdapter); // (5)
+        //   listAdapter = new ArrayAdapter<String>(this,R.layout.simplerow,arrList);
+        //   listView_we_day.setAdapter(listAdapter);
+    }
+
+    /**
+     * Einfacher Dialogbuilder fuer die InfoBox
+     */
+
+    class Koord {
+        private double lng = 0;
+        private double lat = 0;
+
+        public Koord(double lng, double lat) {
+            this.lng = lng;
+            this.lat = lat;
+        }
+
+        public double getLat() {
+            return lat;
+        }
+
+        public void setLat(double lat) {
+            this.lat = lat;
+        }
+
+        public double getLng() {
+            return lng;
+        }
+
+        public void setLng(double lng) {
+            this.lng = lng;
+        }
+    }
+
+    public class ListViewAdapter_Locs extends ArrayAdapter<String> {
+        private Context context;
+        private List<String> tag = new ArrayList<String>();
+
+        public ListViewAdapter_Locs(Context context, List<String> tag) {
+            super(context, R.layout.simplerow, tag);
+            this.context = context;
+            this.tag = tag;
+        }
     }
 
 // class End
